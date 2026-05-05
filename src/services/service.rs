@@ -4,18 +4,18 @@ use tokio::io::{AsyncBufReadExt, BufReader, Result};
 use tokio::sync::Semaphore;
 use tokio::sync::mpsc;
 
-use crate::repositories::database::LegoSet;
-use crate::repositories::database::Repository;
+use crate::repositories::database::SqlxRepository;
+use crate::repositories::database::{LegoSet, Repository};
 use std::mem::take;
 use std::sync::Arc;
 use std::time::Instant;
 
 pub struct Service {
-    repo: Arc<dyn Repository>,
+    repo: Arc<SqlxRepository>,
 }
 
 impl Service {
-    pub fn new(repo: Arc<dyn Repository>) -> Self {
+    pub fn new(repo: Arc<SqlxRepository>) -> Self {
         Self { repo }
     }
 
