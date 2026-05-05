@@ -4,7 +4,9 @@ use sqlx::{MySqlPool, QueryBuilder};
 
 #[async_trait]
 pub trait Repository: Send + Sync {
-    async fn get(&self) -> Result<Vec<LegoSet>, sqlx::Error>;
+    async fn get<T>(&self) -> Result<Vec<T>, sqlx::Error>
+    where
+        T: SqlObject + Send + Unpin + for<'r> sqlx::FromRow<'r, sqlx::mysql::MySqlRow>;
     async fn batch(&self, vec: &Vec<LegoSet>) -> Option<String>;
 }
 
@@ -20,6 +22,14 @@ pub struct LegoSet {
     pub theme: String,
 }
 
+pub trait SqlObject {
+    fn print(&self) -> String {
+        "Object:".to_string()
+    }
+}
+
+impl SqlObject for LegoSet {}
+
 impl SqlxRepository {
     pub fn new(pool: MySqlPool) -> Self {
         Self { pool }
@@ -28,13 +38,16 @@ impl SqlxRepository {
 
 #[async_trait]
 impl Repository for SqlxRepository {
-    async fn get(&self) -> Result<Vec<LegoSet>, sqlx::Error> {
+    async fn get<T>(&self) -> Result<Vec<T>, sqlx::Error>
+    where
+        T: Send + Unpin + for<'r> sqlx::FromRow<'r, sqlx::mysql::MySqlRow>,
+    {
         let mut query_builder = QueryBuilder::new(
             "SELECT set_id, name, year, theme FROM ecommerce.lego_sets WHERE set_id = ",
         );
         query_builder.push_bind("10097775");
         let sets = query_builder
-            .build_query_as::<LegoSet>()
+            .build_query_as::<T>()
             .fetch_all(&self.pool)
             .await?;
 
@@ -60,7 +73,7 @@ impl Repository for SqlxRepository {
         match result {
             Ok(re) => println!("Result: {}", re.rows_affected()),
             Err(e) => {
-                eprintln!("BATCH FAILED: {}", e); // THIS will tell you why the 3,000 are missing
+                eprintln!("BATCH FAILED: {}", e);
             }
         }
         Some("0".to_string())
